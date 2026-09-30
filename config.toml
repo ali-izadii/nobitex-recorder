@@ -1,0 +1,3 @@
+timeout_second=10
+api_key="test"
+nobitex_base_url='https://apiv2.nobitex.ir'
