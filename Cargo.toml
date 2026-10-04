@@ -5,8 +5,12 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-reqwest = { version = "0.13", features = ["blocking"]}
+futures-util = "0.3.34"
+reqwest = { version = "0.13", features = ["blocking"] }
 rust_decimal = "1.43.0"
 serde = { version = "1", features = ["derive"] }
+humantime-serde = {version = "1.1.1"}
 serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "signal", "time"] }
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
 toml = { version = "1.1.6+spec-1.1.0" }

@@ -1,3 +1,5 @@
-timeout_second=10
-api_key="test"
-nobitex_base_url='https://apiv2.nobitex.ir'
+timeout_second = 10
+api_key = "test"
+nobitex_base_url = 'https://apiv2.nobitex.ir'
+nobitex_ws_base_url = 'wss://ws.nobitex.ir/connection/websocket'
+wait_ws_second = '30s'

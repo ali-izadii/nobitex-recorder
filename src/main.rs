@@ -1,5 +1,6 @@
 mod config;
-mod snapshpt;
+mod snapshot;
+mod watch;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -18,7 +19,7 @@ enum Command {
         symbol: String,
     },
     Watch {
-        recording_path: PathBuf,
+        recording_path: Option<PathBuf>,
 
         #[arg(short, long, default_value = "BTCIRT")]
         symbol: String,
@@ -28,7 +29,7 @@ enum Command {
     },
 }
 
-fn fetch_snapshot(symbol: &str) -> Result<snapshpt::Snapshot, Box<dyn std::error::Error>> {
+fn fetch_snapshot(symbol: &str) -> Result<snapshot::Snapshot, Box<dyn std::error::Error>> {
     let config = config::Config::load()?;
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(config.timeout_second))
@@ -40,10 +41,12 @@ fn fetch_snapshot(symbol: &str) -> Result<snapshpt::Snapshot, Box<dyn std::error
         .error_for_status()?
         .text()?;
 
-    snapshpt::Snapshot::parse(&response, SystemTime::now())
+    snapshot::Snapshot::parse(&response, SystemTime::now())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = config::Config::load()?;
+
     let cli = Cli::parse();
     match cli.command {
         Command::Snapshot { symbol } => {
@@ -62,18 +65,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             println!(
                 "exchange_last_update={} received_at={:?}",
-                snapshot.exchange_last_updated,
-                snapshot.receive_at,
+                snapshot.exchange_last_updated, snapshot.receive_at,
             );
         }
         Command::Watch {
             symbol,
             recording_path,
         } => {
-            println!(
-                "{symbol} recording to {}: not implemented yet",
-                recording_path.display()
-            );
+            if let Some(path) = &recording_path {
+                eprintln!("Recording requested: {}", path.display());
+            } else {
+                eprintln!("Console only.");
+            }
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?
+                .block_on(watch::run(
+                    &config.nobitex_ws_base_url,
+                    &symbol,
+                    recording_path,
+                ))?;
         }
         Command::Reply { recording_path } => {
             println!(
