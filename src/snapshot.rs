@@ -1,8 +1,9 @@
+use crate::config::Config;
 use rust_decimal::Decimal;
 use serde::Deserialize;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
-type ResponseResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type ResponseResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Deserialize)]
 struct RawSnapshot {
@@ -81,4 +82,39 @@ impl Snapshot {
     pub fn spread(&self) -> Option<Decimal> {
         Some(self.best_ask()? - self.best_bid()?)
     }
+}
+
+fn fetch(symbol: &str, config: &Config) -> Result<Snapshot, Box<dyn std::error::Error>> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(config.timeout_second))
+        .build()?;
+
+    let response = client
+        .get(format!("{}/v3/orderbook/{symbol}", config.nobitex_base_url))
+        .send()?
+        .error_for_status()?
+        .text()?;
+
+    Snapshot::parse(&response, SystemTime::now())
+}
+
+pub fn run(symbol: &str, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    let snapshot = fetch(symbol, config)?;
+    let display = |value: Option<Decimal>| {
+        value
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "N/A".to_string())
+    };
+
+    println!(
+        "{symbol} best_bid={} best_ask={} spread={}",
+        display(snapshot.best_bid()),
+        display(snapshot.best_ask()),
+        display(snapshot.spread()),
+    );
+    println!(
+        "exchange_last_update={} received_at={:?}",
+        snapshot.exchange_last_updated, snapshot.receive_at,
+    );
+    Ok(())
 }
